@@ -45,8 +45,14 @@ def rotate_pix(xpix, ypix, yaw):
     # TODO:
     # Convert yaw to radians
     # Apply a rotation
-    xpix_rotated = 0
-    ypix_rotated = 0
+
+    # convert yaw angle from degrees to radians
+    yaw_rad = yaw * np.pi/180
+    
+    # perform rotation matrix
+    xpix_rotated = xpix * np.cos(yaw_rad) - ypix * np.sin(yaw_rad)
+    ypix_rotated = xpix * np.sin(yaw_rad) + ypix * np.cos(yaw_rad)
+
     # Return the result  
     return xpix_rotated, ypix_rotated
 
@@ -54,8 +60,11 @@ def rotate_pix(xpix, ypix, yaw):
 def translate_pix(xpix_rot, ypix_rot, xpos, ypos, scale): 
     # TODO:
     # Apply a scaling and a translation
-    xpix_translated = 0
-    ypix_translated = 0
+
+    # perform translation and convert to integer since pixel values can't be float
+    xpix_translated = np.int_(xpos + xpix_rot / scale)
+    ypix_translated = np.int_(ypos + ypix_rot / scale)
+
     # Return the result  
     return xpix_translated, ypix_translated
 
@@ -105,8 +114,45 @@ def perception_step(Rover):
     # Update Rover pixel distances and angles
         # Rover.nav_dists = rover_centric_pixel_distances
         # Rover.nav_angles = rover_centric_angles
+
+    # 1 - define source and destination points
+    source = np.float32([[14, 140], [301 ,140],[200, 96], [118, 96]])
+    destination = np.float32([[image.shape[1]/2 - dst_size, image.shape[0] - bottom_offset],
+                  [image.shape[1]/2 + dst_size, image.shape[0] - bottom_offset],
+                  [image.shape[1]/2 + dst_size, image.shape[0] - 2*dst_size - bottom_offset], 
+                  [image.shape[1]/2 - dst_size, image.shape[0] - 2*dst_size - bottom_offset],
+                  ]) 
+
+    scale = 10
+
+    # 2 - apply perspective transform
+    warped = perspect_transform(Rover.img)
+
+    # 3 - apply color threshold
+    colorsel = color_thresh(warped, rgb_thresh=(160, 160, 160))
+
+    # 4 - update Rover.vision image
+    Rover.vision_image[:,:,0] = colorsel
+
+    # 5 - convert map image pixel values to rover centric coordinates
+    xpix, ypix = rover_coords(colorsel)
+
+    # 6 - convert rover centric pixel values to world coordinates
+    x_world, y_world = pix_to_world(
+        xpix, ypix, Rover.pos[0], Rover.pos[1],
+        Rover.yaw, Rover.worldmap.shape[0], scale)
+
+    print ("perception_step successful")
     
  
     
     
     return Rover
+
+
+
+
+print ("Perception.py run")
+
+
+
