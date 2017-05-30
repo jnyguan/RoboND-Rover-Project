@@ -150,9 +150,9 @@ def perception_step(Rover):
     colorsel_obs, colorsel_rock, colorsel_nav = color_thresh(warped, rgb_thresh=(160, 160, 160))
 
     # 4 - update Rover.vision image
-    Rover.vision_image[:,:,0] = colorsel_obs
-    Rover.vision_image[:,:,1] = colorsel_rock
-    Rover.vision_image[:,:,2] = colorsel_nav
+    Rover.vision_image[:,:,0] = colorsel_obs * 255
+    Rover.vision_image[:,:,1] = colorsel_rock * 255
+    Rover.vision_image[:,:,2] = colorsel_nav * 255
 
     # 5 - convert map image pixel values to rover centric coordinates
     obs_xpix, obs_ypix = rover_coords(colorsel_obs)
@@ -161,7 +161,6 @@ def perception_step(Rover):
     # xpix_obs, ypix_obs, xpix_rock, ypix_rock, xpix_nav, ypix_nav, = rover_coords(colorsel_obs, colorsel_rock, colorsel_nav)
 
     # 6 - convert rover centric pixel values to world coordinates
-
     obs_x_world, obs_y_world = pix_to_world(
         obs_xpix, obs_ypix, Rover.pos[0], Rover.pos[1],
         Rover.yaw, Rover.worldmap.shape[0], scale)
@@ -182,20 +181,17 @@ def perception_step(Rover):
     # 8 - convert rover centric pixel positions to polar coordinates
     Rover.nav_dists, Rover.nav_angles = to_polar_coords(obs_xpix, obs_ypix)
 
-    print (Rover.pos[0])
-    print (Rover.pos[1])
+    # print (Rover.pos[0])
+    # print (Rover.pos[1])
 
-    print ("perception_step successful")
-    
- 
+    # print ("perception_step successful")
+
+    print (Rover.nav_dists)
+    print (Rover.nav_angles)
     
     
     return Rover
 
-
-
-
-print ("Perception.py run")
 
 
 
