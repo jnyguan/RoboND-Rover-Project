@@ -6,18 +6,32 @@ import cv2
 # Identify pixels above the threshold
 # Threshold of RGB > 160 does a nice job of identifying ground pixels only
 def color_thresh(img, rgb_thresh=(160, 160, 160)):
-    # Create an array of zeros same xy size as img, but single channel
-    color_select = np.zeros_like(img[:,:,0])
+
+    # Create an array of zeros same xy size as img
+    # obstacle, rock samples, and navigable terrain are on different channels
+
+    color_select_obstacle = np.zeros_like(img[:,:,0])   
+    color_select_rock = np.zeros_like(img[:,:,0])
+    color_select_nav = np.zeros_like(img[:,:,0])
+
     # Require that each pixel be above all three threshold values in RGB
     # above_thresh will now contain a boolean array with "True"
     # where threshold was met
     above_thresh = (img[:,:,0] > rgb_thresh[0]) \
                 & (img[:,:,1] > rgb_thresh[1]) \
-                & (img[:,:,2] > rgb_thresh[2])
+                & (img[:,:,2] > rgb_thresh[2])       
+            
+    above_thresh_obs = (img[:,:,0] < rgb_thresh[0]) \
+                & (img[:,:,1] < rgb_thresh[1]) \
+                & (img[:,:,2] < rgb_thresh[2]) 
+
     # Index the array of zeros with the boolean array and set to 1
-    color_select[above_thresh] = 1
+    color_select_obstacle[above_thresh_obs] = 1
+    color_select_rock[above_thresh] = 1
+    color_select_nav[above_thresh] = 1
+
     # Return the binary image
-    return color_select
+    return color_select_obstacle, color_select_rock, color_select_nav
 
 # Define a function to convert to rover-centric coordinates
 def rover_coords(binary_img):
@@ -115,6 +129,10 @@ def perception_step(Rover):
         # Rover.nav_dists = rover_centric_pixel_distances
         # Rover.nav_angles = rover_centric_angles
 
+    image = Rover.img
+    dst_size = 10
+    bottom_offset = 6
+
     # 1 - define source and destination points
     source = np.float32([[14, 140], [301 ,140],[200, 96], [118, 96]])
     destination = np.float32([[image.shape[1]/2 - dst_size, image.shape[0] - bottom_offset],
@@ -126,21 +144,46 @@ def perception_step(Rover):
     scale = 10
 
     # 2 - apply perspective transform
-    warped = perspect_transform(Rover.img)
+    warped = perspect_transform(image, source, destination)
 
     # 3 - apply color threshold
-    colorsel = color_thresh(warped, rgb_thresh=(160, 160, 160))
+    colorsel_obs, colorsel_rock, colorsel_nav = color_thresh(warped, rgb_thresh=(160, 160, 160))
 
     # 4 - update Rover.vision image
-    Rover.vision_image[:,:,0] = colorsel
+    Rover.vision_image[:,:,0] = colorsel_obs
+    Rover.vision_image[:,:,1] = colorsel_rock
+    Rover.vision_image[:,:,2] = colorsel_nav
 
     # 5 - convert map image pixel values to rover centric coordinates
-    xpix, ypix = rover_coords(colorsel)
+    obs_xpix, obs_ypix = rover_coords(colorsel_obs)
+    rock_xpix, rock_ypix = rover_coords(colorsel_rock)
+    nav_xpix, nav_ypix = rover_coords(colorsel_nav)
+    # xpix_obs, ypix_obs, xpix_rock, ypix_rock, xpix_nav, ypix_nav, = rover_coords(colorsel_obs, colorsel_rock, colorsel_nav)
 
     # 6 - convert rover centric pixel values to world coordinates
-    x_world, y_world = pix_to_world(
-        xpix, ypix, Rover.pos[0], Rover.pos[1],
+
+    obs_x_world, obs_y_world = pix_to_world(
+        obs_xpix, obs_ypix, Rover.pos[0], Rover.pos[1],
         Rover.yaw, Rover.worldmap.shape[0], scale)
+
+    rock_x_world, rock_y_world = pix_to_world(
+        rock_xpix, rock_ypix, Rover.pos[0], Rover.pos[1],
+        Rover.yaw, Rover.worldmap.shape[0], scale)
+
+    nav_x_world, nav_y_world = pix_to_world(
+        nav_xpix, nav_ypix, Rover.pos[0], Rover.pos[1],
+        Rover.yaw, Rover.worldmap.shape[0], scale)
+
+    # 7 - update rover worldmap to be displayed
+    Rover.worldmap[obs_y_world, obs_x_world, 0] += 1
+    Rover.worldmap[rock_y_world, rock_x_world, 1] += 1
+    Rover.worldmap[nav_y_world, nav_x_world, 2] += 1
+
+    # 8 - convert rover centric pixel positions to polar coordinates
+    Rover.nav_dists, Rover.nav_angles = to_polar_coords(obs_xpix, obs_ypix)
+
+    print (Rover.pos[0])
+    print (Rover.pos[1])
 
     print ("perception_step successful")
     
