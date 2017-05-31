@@ -5,7 +5,8 @@ import cv2
 
 # Identify pixels above the threshold
 # Threshold of RGB > 160 does a nice job of identifying ground pixels only
-def color_thresh(img, rgb_thresh=(160, 160, 160)):
+def color_thresh(img, rgb_thresh=(160, 160, 160), \
+                rock_thresh_min=(60,60,0), rock_thresh_max=(255,255,150)):
 
     # Create an array of zeros same xy size as img
     # obstacle, rock samples, and navigable terrain are on different channels
@@ -24,12 +25,17 @@ def color_thresh(img, rgb_thresh=(160, 160, 160)):
     above_thresh_obs = (img[:,:,0] < rgb_thresh[0]) \
                 & (img[:,:,1] < rgb_thresh[1]) \
                 & (img[:,:,2] < rgb_thresh[2]) 
+            
+    above_thresh_rock = (img[:,:,0] > rock_thresh_min[0]) & (img[:,:,0] < rock_thresh_max[0]) \
+                    & (img[:,:,1] > rock_thresh_min[1]) & (img[:,:,1] < rock_thresh_max[1]) \
+                    & (img[:,:,2] > rock_thresh_min[2]) & (img[:,:,2] < rock_thresh_max[2])\
+        
 
     # Index the array of zeros with the boolean array and set to 1
     color_select_obstacle[above_thresh_obs] = 1
-    color_select_rock[above_thresh] = 1
+    color_select_rock[above_thresh_rock] = 1
     color_select_nav[above_thresh] = 1
-
+    
     # Return the binary image
     return color_select_obstacle, color_select_rock, color_select_nav
 
@@ -147,7 +153,13 @@ def perception_step(Rover):
     warped = perspect_transform(image, source, destination)
 
     # 3 - apply color threshold
-    colorsel_obs, colorsel_rock, colorsel_nav = color_thresh(warped, rgb_thresh=(160, 160, 160))
+
+    rgb_thresh = (160, 160, 160)
+    rock_thresh_min = (50, 45, 0)
+    rock_thresh_max = (255, 255, 35)
+
+    colorsel_obs, colorsel_rock, colorsel_nav = color_thresh(warped, \
+                                rgb_thresh, rock_thresh_min, rock_thresh_max)
 
     # 4 - update Rover.vision image
     Rover.vision_image[:,:,0] = colorsel_obs * 255
