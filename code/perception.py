@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-# test - 11:18
+# test - 11:18 -
 
 # Identify pixels above the threshold
 # Threshold of RGB > 160 does a nice job of identifying ground pixels only
@@ -198,8 +198,8 @@ def perception_step(Rover):
 
     # print ("perception_step successful")
 
-    print (Rover.nav_dists)
-    print (Rover.nav_angles)
+    # print (Rover.nav_dists)
+    # print (Rover.nav_angles)
     
     
     return Rover
